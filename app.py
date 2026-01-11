@@ -761,10 +761,12 @@ If ready to allocate:
         logger.info(f"Stage: {result.get('stage', 'unknown')}")
 
         # If ready to allocate, generate the allocation
-        if result.get('proceed_to_allocate'):
+        if result.get('proceed_to_allocation'):
             logger.info("Proceeding to allocation generation")
             collected_info = result.get('collected_info', {})
             time_horizon = collected_info.get('time_horizon', '4+ years')
+
+            logger.info(f"Extracted time horizon: {time_horizon}")
 
             # Generate allocation
             allocation = get_allocation(
@@ -775,6 +777,7 @@ If ready to allocate:
             )
 
             if allocation:
+                logger.info("Allocation generated successfully, preparing response")
                 result = {
                     'success': True,
                     'stage': 'allocation_generated',
@@ -782,6 +785,7 @@ If ready to allocate:
                     'detected_language': detect_language(user_text)
                 }
             else:
+                logger.error("Allocation generation failed after retries")
                 result = {
                     'success': False,
                     'error': 'Failed to generate allocation after maximum attempts'
