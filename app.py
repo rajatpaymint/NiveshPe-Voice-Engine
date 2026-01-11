@@ -573,5 +573,251 @@ def detect_language(text):
     else:
         return 'english'
 
+# -------------------------------
+# Conversation Management System
+# -------------------------------
+
+@app.route('/api/conversation/start', methods=['POST'])
+def start_conversation():
+    """
+    Starts a new conversation after risk profiling.
+    Returns greeting message with TTS.
+    """
+    try:
+        data = request.json
+        user_profile = data.get('user_profile')
+
+        if not user_profile:
+            return jsonify({'success': False, 'error': 'User profile required'}), 400
+
+        risk_profile = user_profile.get('risk_profile', 'Medium Risk')
+
+        logger.info("="*80)
+        logger.info("CONVERSATION STARTED")
+        logger.info(f"Risk Profile: {risk_profile}")
+
+        # Load context
+        context = load_context()
+
+        # Generate greeting using GPT-4
+        prompt = f"""
+{context}
+
+User has completed risk profiling:
+Risk Profile: {risk_profile}
+Risk Score: {user_profile.get('risk_score', 50)}
+
+Generate a warm, conversational greeting as per STAGE 1: PERSONALIZED GREETING rules.
+
+Return ONLY valid JSON:
+{{
+  "stage": "greeting",
+  "bot_message": "...",
+  "bot_message_hindi": "..." (if user might speak Hindi, provide Hindi version too),
+  "needs_response": true
+}}
+"""
+
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        bot_message = result.get('bot_message', '')
+
+        logger.info(f"Greeting Generated: {bot_message}")
+
+        # Generate TTS audio
+        detected_language = 'english'  # Default for greeting
+        voice = "nova"  # Female voice
+
+        tts_response = openai.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=bot_message,
+            speed=0.95
+        )
+
+        audio_bytes = tts_response.content
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        result['audio'] = f"data:audio/mp3;base64,{audio_base64}"
+        result['success'] = True
+
+        logger.info("Greeting audio generated successfully")
+        logger.info("="*80)
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error starting conversation: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/conversation/continue', methods=['POST'])
+def continue_conversation():
+    """
+    Handles multi-turn conversation.
+    Extracts info, asks questions, or generates allocation.
+    """
+    try:
+        data = request.json
+        user_text = data.get('user_text', '')
+        user_profile = data.get('user_profile')
+        conversation_history = data.get('conversation_history', [])
+        previous_allocation = data.get('previous_allocation')
+
+        if not user_text or not user_profile:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+
+        logger.info("="*80)
+        logger.info("CONVERSATION TURN")
+        logger.info(f"User Input: {user_text}")
+        logger.info(f"Conversation Turn: {len(conversation_history) + 1}")
+
+        # Load context
+        context = load_context()
+
+        # Build conversation context
+        conversation_context = "\n".join([
+            f"{msg['role']}: {msg['content']}" for msg in conversation_history
+        ])
+
+        # Determine if this is a modification request
+        is_modification = previous_allocation is not None
+
+        if is_modification:
+            logger.info("Handling modification request")
+            prompt = f"""
+{context}
+
+User Profile:
+{json.dumps(user_profile, indent=2)}
+
+Previous Allocation:
+{json.dumps(previous_allocation, indent=2)}
+
+User wants to modify: "{user_text}"
+
+Parse the modification request and generate a new allocation following all rules.
+Return the FULL allocation JSON as per FINAL OUTPUT FORMAT.
+"""
+        else:
+            logger.info("Processing conversation turn for new allocation")
+            prompt = f"""
+{context}
+
+User Profile:
+{json.dumps(user_profile, indent=2)}
+
+Conversation History:
+{conversation_context}
+
+Latest User Input: "{user_text}"
+
+Follow CONVERSATIONAL FLOW MANAGEMENT rules:
+1. Extract all available information from user input
+2. Check what's still missing (goal, time_horizon)
+3. If time_horizon is missing, ask for it
+4. If everything is available, generate allocation
+5. Return appropriate JSON based on stage
+
+Return ONLY valid JSON in one of these formats:
+
+If need to ask question:
+{{
+  "stage": "questioning",
+  "bot_message": "...",
+  "question_type": "time_horizon" | "goal" | "preferences",
+  "needs_response": true,
+  "collected_info": {{
+    "goal": "..." or null,
+    "time_horizon": "..." or null,
+    "preferences": {{...}}
+  }}
+}}
+
+If ready to allocate:
+{{
+  "stage": "ready_to_allocate",
+  "proceed_to_allocation": true,
+  "collected_info": {{
+    "goal": "...",
+    "time_horizon": "...",
+    "preferences": {{...}}
+  }}
+}}
+"""
+
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+
+        logger.info(f"Stage: {result.get('stage', 'unknown')}")
+
+        # If ready to allocate, generate the allocation
+        if result.get('proceed_to_allocate'):
+            logger.info("Proceeding to allocation generation")
+            collected_info = result.get('collected_info', {})
+            time_horizon = collected_info.get('time_horizon', '4+ years')
+
+            # Generate allocation
+            allocation = get_allocation(
+                user_text=user_text,
+                user_profile=user_profile,
+                time_horizon=time_horizon,
+                previous_allocation=previous_allocation
+            )
+
+            if allocation:
+                result = {
+                    'success': True,
+                    'stage': 'allocation_generated',
+                    'allocation': allocation,
+                    'detected_language': detect_language(user_text)
+                }
+            else:
+                result = {
+                    'success': False,
+                    'error': 'Failed to generate allocation after maximum attempts'
+                }
+
+        # If bot needs to ask question, generate TTS
+        elif result.get('needs_response') and result.get('bot_message'):
+            bot_message = result['bot_message']
+            logger.info(f"Bot Question: {bot_message}")
+
+            # Detect language
+            detected_language = detect_language(user_text)
+            voice = "nova"
+
+            # Generate TTS
+            tts_response = openai.audio.speech.create(
+                model="tts-1",
+                voice=voice,
+                input=bot_message,
+                speed=0.95
+            )
+
+            audio_bytes = tts_response.content
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+            result['audio'] = f"data:audio/mp3;base64,{audio_base64}"
+            result['success'] = True
+
+        logger.info("CONVERSATION TURN COMPLETED")
+        logger.info("="*80)
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in conversation: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

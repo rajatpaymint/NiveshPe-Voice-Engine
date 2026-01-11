@@ -314,6 +314,89 @@
             color: #555;
             font-style: italic;
         }
+
+        .conversation-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+
+        .bot-message-section {
+            margin-bottom: 20px;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .bot-message {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .bot-avatar {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .bot-message-content {
+            flex: 1;
+        }
+
+        .bot-message-content p {
+            margin: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .user-message {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            flex-direction: row-reverse;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .user-avatar {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .user-message-content {
+            flex: 1;
+            text-align: right;
+        }
+
+        .user-message-content p {
+            margin: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .message-timestamp {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -357,32 +440,35 @@
             <button onclick="calculateRisk()">Calculate Risk Profile</button>
         </div>
 
-        <!-- Step 2: Risk Profile Display + Voice Input -->
+        <!-- Step 2: Conversational Investment Planning -->
         <div id="step2" class="step">
             <div id="riskProfile" class="risk-profile"></div>
 
-            <h2 style="margin-bottom: 20px;">🎤 Voice Investment Goal</h2>
-            <p style="margin-bottom: 20px; color: #666;">Tell us about your investment goals in your own words (English or Hindi).</p>
+            <h2 style="margin-bottom: 20px;">💬 Let's Plan Your Investment</h2>
 
-            <div class="form-group">
-                <label for="timeHorizon">Investment Time Horizon</label>
-                <select id="timeHorizon" required>
-                    <option value="">Select Time Horizon</option>
-                    <option value="<1 year">Less than 1 year</option>
-                    <option value="1-2 years">1-2 years</option>
-                    <option value="2-4 years">2-4 years</option>
-                    <option value="4+ years">4+ years</option>
-                </select>
+            <!-- Conversation History -->
+            <div id="conversationContainer" class="conversation-container">
+                <!-- Bot and user messages will appear here -->
             </div>
 
+            <!-- Bot Message Display (for current question) -->
+            <div id="botMessageSection" class="bot-message-section" style="display: none;">
+                <div class="bot-message">
+                    <div class="bot-avatar">🤖</div>
+                    <div class="bot-message-content">
+                        <p id="botMessageText"></p>
+                        <audio id="botAudioPlayer" style="display: none;"></audio>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voice Input Section -->
             <div class="voice-recorder">
-                <p>Click the microphone to start recording (stops after 5 seconds of silence)</p>
+                <p id="recordInstructions">Click the microphone to respond (stops after 5 seconds of silence)</p>
                 <div id="recordButton" class="record-button" onclick="toggleRecording()">🎤</div>
-                <p id="recordingStatus">Ready to record</p>
+                <p id="recordingStatus">Waiting for bot...</p>
                 <div id="transcription" class="transcription" style="display: none;"></div>
             </div>
-
-            <button id="generateButton" onclick="generateAllocation()" disabled>Generate Allocation</button>
         </div>
 
         <!-- Step 3: Allocation Display -->
@@ -439,6 +525,12 @@
         let currentAudioSrc = null;
         let detectedLanguage = 'english';
 
+        // Conversation state
+        let conversationHistory = [];
+        let conversationStage = 'not_started';
+        let waitingForUser = false;
+        let botAudioPlayer = null;
+
         function showStep(stepNumber) {
             document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
             document.getElementById('step' + stepNumber).classList.add('active');
@@ -484,6 +576,9 @@
                         <p style="font-size: 24px; font-weight: bold;">Risk Score: ${data.risk_score}/100</p>
                     `;
                     showStep(2);
+
+                    // Start conversation
+                    await startConversation();
                 } else {
                     showError(data.error);
                 }
@@ -492,6 +587,105 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        async function startConversation() {
+            try {
+                showLoading(true);
+
+                const response = await fetch('/api/conversation/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_profile: userProfile })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    conversationStage = 'greeting';
+
+                    // Display bot greeting
+                    displayBotMessage(data.bot_message, data.audio);
+
+                    // Add to conversation history
+                    conversationHistory.push({
+                        role: 'bot',
+                        content: data.bot_message
+                    });
+
+                    // Enable microphone for user response
+                    waitingForUser = true;
+                    document.getElementById('recordingStatus').textContent = 'Ready to record';
+                } else {
+                    showError('Failed to start conversation');
+                }
+            } catch (error) {
+                showError('Error starting conversation: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayBotMessage(message, audioData) {
+            // Show bot message
+            const botMessageSection = document.getElementById('botMessageSection');
+            const botMessageText = document.getElementById('botMessageText');
+
+            botMessageText.textContent = message;
+            botMessageSection.style.display = 'block';
+
+            // Play audio if available
+            if (audioData) {
+                botAudioPlayer = document.getElementById('botAudioPlayer');
+                botAudioPlayer.src = audioData;
+
+                botAudioPlayer.play().catch(error => {
+                    console.log('Autoplay blocked:', error);
+                });
+
+                botAudioPlayer.onended = () => {
+                    console.log('Bot audio finished playing');
+                };
+            }
+        }
+
+        function displayUserMessage(message) {
+            const conversationContainer = document.getElementById('conversationContainer');
+
+            const userMessageHTML = `
+                <div class="user-message">
+                    <div class="user-avatar">👤</div>
+                    <div class="user-message-content">
+                        <p>${message}</p>
+                    </div>
+                </div>
+            `;
+
+            conversationContainer.innerHTML += userMessageHTML;
+            conversationContainer.scrollTop = conversationContainer.scrollHeight;
+        }
+
+        function moveBotMessageToHistory() {
+            const botMessageSection = document.getElementById('botMessageSection');
+            const botMessageText = document.getElementById('botMessageText').textContent;
+            const conversationContainer = document.getElementById('conversationContainer');
+
+            if (botMessageText) {
+                const botMessageHTML = `
+                    <div class="bot-message">
+                        <div class="bot-avatar">🤖</div>
+                        <div class="bot-message-content">
+                            <p>${botMessageText}</p>
+                        </div>
+                    </div>
+                `;
+
+                conversationContainer.innerHTML += botMessageHTML;
+                conversationContainer.scrollTop = conversationContainer.scrollHeight;
+            }
+
+            // Hide current bot message section
+            botMessageSection.style.display = 'none';
         }
 
         function detectSilence(analyser, stream, button, status) {
@@ -606,23 +800,36 @@
                 reader.onloadend = async () => {
                     const base64Audio = reader.result;
 
-                    const response = await fetch('/api/transcribe', {
+                    // Step 1: Transcribe audio
+                    const transcribeResponse = await fetch('/api/transcribe', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ audio: base64Audio })
                     });
 
-                    const data = await response.json();
+                    const transcribeData = await transcribeResponse.json();
 
-                    if (data.success) {
-                        transcribedText = data.text;
-                        const transcriptionDiv = document.getElementById('transcription');
-                        transcriptionDiv.textContent = '"' + data.text + '"';
-                        transcriptionDiv.style.display = 'block';
-                        document.getElementById('recordingStatus').textContent = 'Recording complete!';
-                        document.getElementById('generateButton').disabled = false;
+                    if (transcribeData.success) {
+                        transcribedText = transcribeData.text;
+
+                        // Move current bot message to history
+                        moveBotMessageToHistory();
+
+                        // Display user message
+                        displayUserMessage(transcribedText);
+
+                        // Add to conversation history
+                        conversationHistory.push({
+                            role: 'user',
+                            content: transcribedText
+                        });
+
+                        document.getElementById('recordingStatus').textContent = 'Processing...';
+
+                        // Step 2: Continue conversation
+                        await continueConversation(transcribedText);
                     } else {
-                        showError(data.error);
+                        showError(transcribeData.error);
                         document.getElementById('recordingStatus').textContent = 'Transcription failed. Try again.';
                     }
 
@@ -634,29 +841,15 @@
             }
         }
 
-        async function generateAllocation() {
-            const timeHorizon = document.getElementById('timeHorizon').value;
-
-            if (!timeHorizon) {
-                showError('Please select investment time horizon');
-                return;
-            }
-
-            if (!transcribedText) {
-                showError('Please record your investment goals first');
-                return;
-            }
-
-            showLoading(true);
-
+        async function continueConversation(userText) {
             try {
-                const response = await fetch('/api/allocate', {
+                const response = await fetch('/api/conversation/continue', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        user_text: transcribedText,
+                        user_text: userText,
                         user_profile: userProfile,
-                        time_horizon: timeHorizon,
+                        conversation_history: conversationHistory,
                         previous_allocation: currentAllocation
                     })
                 });
@@ -664,17 +857,34 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    currentAllocation = data.allocation;
-                    detectedLanguage = data.detected_language || 'english';
-                    displayAllocation(data.allocation);
-                    showStep(3);
+                    conversationStage = data.stage;
+
+                    if (data.stage === 'questioning') {
+                        // Bot has another question
+                        displayBotMessage(data.bot_message, data.audio);
+
+                        conversationHistory.push({
+                            role: 'bot',
+                            content: data.bot_message
+                        });
+
+                        document.getElementById('recordingStatus').textContent = 'Ready to record';
+                        waitingForUser = true;
+
+                    } else if (data.stage === 'allocation_generated') {
+                        // Allocation is ready
+                        currentAllocation = data.allocation;
+                        detectedLanguage = data.detected_language;
+                        displayAllocation(data.allocation);
+                        showStep(3);
+                    }
                 } else {
-                    showError(data.error);
+                    showError(data.error || 'Failed to continue conversation');
+                    document.getElementById('recordingStatus').textContent = 'Error. Try again.';
                 }
             } catch (error) {
-                showError('Failed to generate allocation: ' + error.message);
-            } finally {
-                showLoading(false);
+                showError('Error in conversation: ' + error.message);
+                document.getElementById('recordingStatus').textContent = 'Error. Try again.';
             }
         }
 
@@ -811,15 +1021,12 @@
             });
         }
 
-        function modifyAllocation() {
+        async function modifyAllocation() {
             if (modificationCount >= 2) {
                 showError('Maximum modifications (2) reached. Please finalize or start a new session.');
                 return;
             }
             modificationCount++;
-            transcribedText = '';
-            isDetectingSilence = false;
-            silenceStart = null;
 
             // Reset audio player
             if (audioPlayer) {
@@ -830,10 +1037,39 @@
             isMuted = false;
             document.getElementById('audioPlayerSection').style.display = 'none';
 
-            document.getElementById('transcription').style.display = 'none';
-            document.getElementById('recordingStatus').textContent = 'Ready to record';
-            document.getElementById('generateButton').disabled = true;
+            // Go back to conversation mode
             showStep(2);
+
+            // Bot asks what to change
+            const botMessage = "What would you like to change in your allocation? You can ask for more growth, more safety, adjust gold, or change fund types.";
+
+            // Create TTS for modification question
+            try {
+                const response = await fetch('/api/text-to-speech', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: botMessage,
+                        language: detectedLanguage
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayBotMessage(botMessage, data.audio);
+                    conversationHistory.push({
+                        role: 'bot',
+                        content: botMessage
+                    });
+
+                    document.getElementById('recordingStatus').textContent = 'Ready to record';
+                    waitingForUser = true;
+                }
+            } catch (error) {
+                console.error('Error generating modification question:', error);
+                displayBotMessage(botMessage, null);
+            }
         }
 
         function finalizeAllocation() {
