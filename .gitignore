@@ -1,0 +1,39 @@
+# Environment variables (contains API keys)
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Log files
+*.log
+niveshpe_logs.log
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Test files (optional)
+test_validation.py
+
+# Temporary files
+*.tmp
+.cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/

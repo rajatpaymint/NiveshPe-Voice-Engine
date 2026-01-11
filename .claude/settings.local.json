@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo $OPENAI_API_KEY)"
+    ]
+  }
+}

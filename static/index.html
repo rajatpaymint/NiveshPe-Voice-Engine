@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NiveshPe - Voice Investment Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .risk-profile {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .risk-profile h2 {
+            margin-bottom: 10px;
+        }
+
+        .voice-recorder {
+            text-align: center;
+            padding: 30px;
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .record-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            font-size: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .record-button:hover {
+            transform: scale(1.1);
+        }
+
+        .record-button.recording {
+            animation: pulse 1.5s infinite;
+            background: #f5576c;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .transcription {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .allocation-card {
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .fund-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .fund-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .fund-name {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .fund-percentage {
+            font-size: 24px;
+            font-weight: bold;
+            color: #764ba2;
+        }
+
+        .fund-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .blended-return {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 20px;
+        }
+
+        .modification-count {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        .secondary-button {
+            background: #6c757d;
+        }
+
+        .secondary-button:hover {
+            background: #5a6268;
+        }
+
+        .audio-player {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .audio-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .audio-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .audio-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .audio-button.muted {
+            background: #f5576c;
+            color: white;
+        }
+
+        .audio-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 NiveshPe</h1>
+        <p class="subtitle">Voice-Powered Investment Recommendation Engine</p>
+
+        <!-- Step 1: User Onboarding -->
+        <div id="step1" class="step active">
+            <h2 style="margin-bottom: 20px;">📋 User Profile</h2>
+            <div class="form-group">
+                <label for="salary">Monthly Salary (INR)</label>
+                <input type="number" id="salary" placeholder="e.g., 50000" required>
+            </div>
+            <div class="form-group">
+                <label for="occupation">Occupation</label>
+                <select id="occupation" required>
+                    <option value="">Select Occupation</option>
+                    <option value="Business">Business</option>
+                    <option value="Private Job">Private Job</option>
+                    <option value="Freelancer">Freelancer</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Student">Student</option>
+                    <option value="Govt Service">Govt Service</option>
+                    <option value="Public Sector Service">Public Sector Service</option>
+                    <option value="Housewife">Housewife</option>
+                    <option value="Retired">Retired</option>
+                    <option value="Shopkeeper">Shopkeeper</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Others">Others</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dependents">Number of Dependents</label>
+                <input type="number" id="dependents" placeholder="e.g., 2" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="age">Age</label>
+                <input type="number" id="age" placeholder="e.g., 30" min="18" max="100" required>
+            </div>
+            <button onclick="calculateRisk()">Calculate Risk Profile</button>
+        </div>
+
+        <!-- Step 2: Risk Profile Display + Voice Input -->
+        <div id="step2" class="step">
+            <div id="riskProfile" class="risk-profile"></div>
+
+            <h2 style="margin-bottom: 20px;">🎤 Voice Investment Goal</h2>
+            <p style="margin-bottom: 20px; color: #666;">Tell us about your investment goals in your own words (English or Hindi).</p>
+
+            <div class="form-group">
+                <label for="timeHorizon">Investment Time Horizon</label>
+                <select id="timeHorizon" required>
+                    <option value="">Select Time Horizon</option>
+                    <option value="<1 year">Less than 1 year</option>
+                    <option value="1-2 years">1-2 years</option>
+                    <option value="2-4 years">2-4 years</option>
+                    <option value="4+ years">4+ years</option>
+                </select>
+            </div>
+
+            <div class="voice-recorder">
+                <p>Click the microphone to start recording (stops after 5 seconds of silence)</p>
+                <div id="recordButton" class="record-button" onclick="toggleRecording()">🎤</div>
+                <p id="recordingStatus">Ready to record</p>
+                <div id="transcription" class="transcription" style="display: none;"></div>
+            </div>
+
+            <button id="generateButton" onclick="generateAllocation()" disabled>Generate Allocation</button>
+        </div>
+
+        <!-- Step 3: Allocation Display -->
+        <div id="step3" class="step">
+            <h2 style="margin-bottom: 20px;">📊 Your Investment Allocation</h2>
+
+            <!-- Audio Player -->
+            <div id="audioPlayerSection" class="audio-player" style="display: none;">
+                <h3 style="margin-bottom: 10px;">🔊 Voice Explanation</h3>
+                <p id="audioStatus" class="audio-status">Preparing audio...</p>
+                <audio id="audioPlayer" style="display: none;"></audio>
+                <div class="audio-controls">
+                    <button class="audio-button" onclick="toggleMute()" id="muteButton" title="Mute/Unmute">
+                        🔊
+                    </button>
+                    <button class="audio-button" onclick="replayAudio()" title="Replay Explanation">
+                        🔄
+                    </button>
+                </div>
+            </div>
+
+            <div id="allocationDisplay"></div>
+            <div class="modification-count" id="modificationCount">Modifications remaining: 2</div>
+            <div class="button-group">
+                <button class="secondary-button" onclick="finalizeAllocation()">✅ Finalize</button>
+                <button onclick="modifyAllocation()">🔄 Modify</button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+
+        <!-- Error Display -->
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        let userProfile = null;
+        let currentAllocation = null;
+        let modificationCount = 0;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let transcribedText = '';
+        let audioContext = null;
+        let analyser = null;
+        let silenceTimer = null;
+        let silenceStart = null;
+        let isDetectingSilence = false;
+        let audioPlayer = null;
+        let isMuted = false;
+        let currentAudioSrc = null;
+        let detectedLanguage = 'english';
+
+        function showStep(stepNumber) {
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            document.getElementById('step' + stepNumber).classList.add('active');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        async function calculateRisk() {
+            const salary = document.getElementById('salary').value;
+            const occupation = document.getElementById('occupation').value;
+            const dependents = document.getElementById('dependents').value;
+            const age = document.getElementById('age').value;
+
+            if (!salary || !occupation || !dependents || !age) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/calculate-risk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ salary, occupation, dependents, age })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    userProfile = data.user_profile;
+                    document.getElementById('riskProfile').innerHTML = `
+                        <h2>${data.risk_profile}</h2>
+                        <p style="font-size: 24px; font-weight: bold;">Risk Score: ${data.risk_score}/100</p>
+                    `;
+                    showStep(2);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Failed to calculate risk profile: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function detectSilence(analyser, stream, button, status) {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            const SILENCE_THRESHOLD = 10; // Adjust this value to change sensitivity (lower = more sensitive)
+            const SILENCE_DURATION = 5000; // 5 seconds of silence
+
+            function checkAudioLevel() {
+                if (!isDetectingSilence) return;
+
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+
+                if (average < SILENCE_THRESHOLD) {
+                    // Silence detected
+                    if (silenceStart === null) {
+                        silenceStart = Date.now();
+                        status.textContent = 'Listening... (detecting silence)';
+                    } else {
+                        const silenceDuration = Date.now() - silenceStart;
+                        const remaining = Math.ceil((SILENCE_DURATION - silenceDuration) / 1000);
+                        if (remaining > 0) {
+                            status.textContent = `Silence detected... stopping in ${remaining}s`;
+                        }
+
+                        if (silenceDuration >= SILENCE_DURATION) {
+                            // 5 seconds of silence detected, stop recording
+                            stopRecording(stream, button, status);
+                            return;
+                        }
+                    }
+                } else {
+                    // Sound detected, reset silence timer
+                    silenceStart = null;
+                    status.textContent = 'Recording... (speak your goals)';
+                }
+
+                requestAnimationFrame(checkAudioLevel);
+            }
+
+            isDetectingSilence = true;
+            checkAudioLevel();
+        }
+
+        function stopRecording(stream, button, status) {
+            isDetectingSilence = false;
+            silenceStart = null;
+
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                button.classList.remove('recording');
+                status.textContent = 'Transcribing...';
+            }
+
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        async function toggleRecording() {
+            const button = document.getElementById('recordButton');
+            const status = document.getElementById('recordingStatus');
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    // Set up audio context for silence detection
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 2048;
+
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        await transcribeAudio(audioBlob);
+                    };
+
+                    mediaRecorder.start();
+                    button.classList.add('recording');
+                    status.textContent = 'Recording... (speak your goals)';
+
+                    // Start silence detection
+                    detectSilence(analyser, stream, button, status);
+
+                } catch (error) {
+                    showError('Microphone access denied or not available');
+                    isDetectingSilence = false;
+                }
+            }
+        }
+
+        async function transcribeAudio(audioBlob) {
+            showLoading(true);
+
+            try {
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result;
+
+                    const response = await fetch('/api/transcribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ audio: base64Audio })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        transcribedText = data.text;
+                        const transcriptionDiv = document.getElementById('transcription');
+                        transcriptionDiv.textContent = '"' + data.text + '"';
+                        transcriptionDiv.style.display = 'block';
+                        document.getElementById('recordingStatus').textContent = 'Recording complete!';
+                        document.getElementById('generateButton').disabled = false;
+                    } else {
+                        showError(data.error);
+                        document.getElementById('recordingStatus').textContent = 'Transcription failed. Try again.';
+                    }
+
+                    showLoading(false);
+                };
+            } catch (error) {
+                showError('Failed to transcribe audio: ' + error.message);
+                showLoading(false);
+            }
+        }
+
+        async function generateAllocation() {
+            const timeHorizon = document.getElementById('timeHorizon').value;
+
+            if (!timeHorizon) {
+                showError('Please select investment time horizon');
+                return;
+            }
+
+            if (!transcribedText) {
+                showError('Please record your investment goals first');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/allocate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_text: transcribedText,
+                        user_profile: userProfile,
+                        time_horizon: timeHorizon,
+                        previous_allocation: currentAllocation
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentAllocation = data.allocation;
+                    detectedLanguage = data.detected_language || 'english';
+                    displayAllocation(data.allocation);
+                    showStep(3);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Failed to generate allocation: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function displayAllocation(allocation) {
+            let html = '';
+
+            if (allocation.description) {
+                html += `<div class="allocation-card">
+                    <h3 style="margin-bottom: 10px;">📝 Strategy</h3>
+                    <p>${allocation.description}</p>
+                </div>`;
+            }
+
+            html += '<div class="allocation-card"><h3 style="margin-bottom: 15px;">💼 Fund Allocation</h3>';
+
+            allocation.allocation.forEach(fund => {
+                html += `
+                    <div class="fund-item">
+                        <div class="fund-header">
+                            <div class="fund-name">${fund.fund_name}</div>
+                            <div class="fund-percentage">${fund.percentage}%</div>
+                        </div>
+                        <div class="fund-details">
+                            <span>${fund.fund_category}</span>
+                            <span>3Y CAGR: ${fund.cagr_3y}%</span>
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">ISIN: ${fund.isin}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            html += `<div class="blended-return">
+                <strong>Historical Blended 3Y CAGR: ${allocation.blended_3y_cagr}%</strong>
+                <p style="font-size: 12px; margin-top: 5px; opacity: 0.9;">*Past performance does not guarantee future returns</p>
+            </div>`;
+
+            document.getElementById('allocationDisplay').innerHTML = html;
+            document.getElementById('modificationCount').textContent = `Modifications remaining: ${2 - modificationCount}`;
+
+            // Generate and play audio explanation
+            if (allocation.description) {
+                await generateAndPlayAudio(allocation.description);
+            }
+        }
+
+        async function generateAndPlayAudio(text) {
+            const audioPlayerSection = document.getElementById('audioPlayerSection');
+            const audioStatus = document.getElementById('audioStatus');
+
+            try {
+                // Show audio player section
+                audioPlayerSection.style.display = 'block';
+                audioStatus.textContent = 'Generating voice explanation...';
+
+                const response = await fetch('/api/text-to-speech', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        language: detectedLanguage
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    audioPlayer = document.getElementById('audioPlayer');
+                    currentAudioSrc = data.audio;
+                    audioPlayer.src = currentAudioSrc;
+
+                    // Auto-play the audio
+                    audioStatus.textContent = 'Playing explanation...';
+                    try {
+                        await audioPlayer.play();
+
+                        // Update status when audio ends
+                        audioPlayer.onended = () => {
+                            audioStatus.textContent = 'Click replay to hear again';
+                        };
+
+                        // Update status if there's an error
+                        audioPlayer.onerror = () => {
+                            audioStatus.textContent = 'Audio ready - click replay to listen';
+                        };
+                    } catch (playError) {
+                        // Autoplay might be blocked by browser
+                        audioStatus.textContent = 'Audio ready - click replay to listen';
+                        console.log('Autoplay blocked, user can manually play:', playError);
+                    }
+                } else {
+                    audioStatus.textContent = 'Could not generate audio';
+                    showError('Failed to generate audio explanation');
+                }
+            } catch (error) {
+                audioStatus.textContent = 'Audio generation failed';
+                console.error('TTS error:', error);
+            }
+        }
+
+        function toggleMute() {
+            const muteButton = document.getElementById('muteButton');
+            audioPlayer = document.getElementById('audioPlayer');
+
+            if (!audioPlayer) return;
+
+            isMuted = !isMuted;
+            audioPlayer.muted = isMuted;
+
+            if (isMuted) {
+                muteButton.textContent = '🔇';
+                muteButton.classList.add('muted');
+            } else {
+                muteButton.textContent = '🔊';
+                muteButton.classList.remove('muted');
+            }
+        }
+
+        function replayAudio() {
+            audioPlayer = document.getElementById('audioPlayer');
+            const audioStatus = document.getElementById('audioStatus');
+
+            if (!audioPlayer || !currentAudioSrc) {
+                showError('No audio available to replay');
+                return;
+            }
+
+            audioStatus.textContent = 'Playing explanation...';
+            audioPlayer.currentTime = 0;
+            audioPlayer.play().catch(error => {
+                audioStatus.textContent = 'Could not play audio';
+                console.error('Replay error:', error);
+            });
+        }
+
+        function modifyAllocation() {
+            if (modificationCount >= 2) {
+                showError('Maximum modifications (2) reached. Please finalize or start a new session.');
+                return;
+            }
+            modificationCount++;
+            transcribedText = '';
+            isDetectingSilence = false;
+            silenceStart = null;
+
+            // Reset audio player
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer.src = '';
+            }
+            currentAudioSrc = null;
+            isMuted = false;
+            document.getElementById('audioPlayerSection').style.display = 'none';
+
+            document.getElementById('transcription').style.display = 'none';
+            document.getElementById('recordingStatus').textContent = 'Ready to record';
+            document.getElementById('generateButton').disabled = true;
+            showStep(2);
+        }
+
+        function finalizeAllocation() {
+            if (confirm('Are you sure you want to finalize this allocation?')) {
+                alert('✅ Allocation finalized! Thank you for using NiveshPe.');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
