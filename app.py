@@ -90,6 +90,110 @@ def calculate_risk_score(salary, occupation, dependents, age):
     return risk_score, profile
 
 # -------------------------------
+# Investment Calculations Function
+# -------------------------------
+
+def calculate_investment_returns(allocation):
+    """
+    Calculates investment projections (total invested, expected corpus, expected gains)
+    based on allocation details.
+
+    Returns: Updated allocation with investment_calculations added
+    """
+    try:
+        # Extract required fields
+        investment_amount = allocation.get('investment_amount')
+        investment_type = allocation.get('investment_type')
+        sip_frequency = allocation.get('sip_frequency', 'monthly')
+        time_horizon_months = allocation.get('time_horizon_months', 12)
+        blended_cagr = allocation.get('blended_3y_cagr', 12)
+
+        # Check if required fields are present
+        if investment_amount is None or investment_type is None:
+            logger.warning("Cannot calculate investment returns: missing investment_amount or investment_type")
+            return allocation
+
+        logger.info("-" * 80)
+        logger.info("INVESTMENT CALCULATIONS")
+        logger.info("-" * 80)
+        logger.info(f"Investment Amount: ₹{investment_amount:,.2f}")
+        logger.info(f"Investment Type: {investment_type}")
+        logger.info(f"SIP Frequency: {sip_frequency if investment_type == 'SIP' else 'N/A'}")
+        logger.info(f"Time Horizon: {time_horizon_months} months")
+        logger.info(f"Blended CAGR: {blended_cagr}%")
+
+        # Calculate investment period in years
+        investment_period_years = time_horizon_months / 12
+
+        # Calculate total invested
+        if investment_type == "Lumpsum":
+            total_invested = investment_amount
+        elif investment_type == "SIP":
+            if sip_frequency == "daily":
+                total_invested = investment_amount * investment_period_years * 365
+            elif sip_frequency == "weekly":
+                total_invested = investment_amount * investment_period_years * 52
+            else:  # monthly (default)
+                total_invested = investment_amount * investment_period_years * 12
+        else:
+            logger.error(f"Unknown investment_type: {investment_type}")
+            return allocation
+
+        # Calculate expected corpus
+        if investment_type == "Lumpsum":
+            # Lumpsum formula: FV = P × (1 + r)^n
+            expected_corpus = investment_amount * ((1 + blended_cagr/100) ** investment_period_years)
+        elif investment_type == "SIP":
+            # SIP formula: FV = P × [((1 + r)^n - 1) / r] × (1 + r)
+            if sip_frequency == "daily":
+                rate = (blended_cagr/100) / 365
+                n = investment_period_years * 365
+            elif sip_frequency == "weekly":
+                rate = (blended_cagr/100) / 52
+                n = investment_period_years * 52
+            else:  # monthly (default)
+                rate = (blended_cagr/100) / 12
+                n = investment_period_years * 12
+
+            expected_corpus = investment_amount * (((1 + rate) ** n - 1) / rate) * (1 + rate)
+        else:
+            logger.error(f"Unknown investment_type: {investment_type}")
+            return allocation
+
+        # Calculate expected gains
+        expected_gains = expected_corpus - total_invested
+
+        # Round to 2 decimal places
+        total_invested = round(total_invested, 2)
+        expected_corpus = round(expected_corpus, 2)
+        expected_gains = round(expected_gains, 2)
+        investment_period_years = round(investment_period_years, 2)
+
+        # Add investment_calculations to allocation
+        allocation['investment_calculations'] = {
+            'total_invested': total_invested,
+            'expected_corpus': expected_corpus,
+            'expected_gains': expected_gains,
+            'investment_period_years': investment_period_years
+        }
+
+        logger.info("-" * 80)
+        logger.info("CALCULATION RESULTS")
+        logger.info("-" * 80)
+        logger.info(f"Investment Period: {investment_period_years} years")
+        logger.info(f"Total Invested: ₹{total_invested:,.2f}")
+        logger.info(f"Expected Corpus: ₹{expected_corpus:,.2f}")
+        logger.info(f"Expected Gains: ₹{expected_gains:,.2f}")
+        logger.info(f"Expected Return: {((expected_gains/total_invested)*100):.2f}%")
+        logger.info("-" * 80)
+
+        return allocation
+
+    except Exception as e:
+        logger.error(f"Error calculating investment returns: {str(e)}")
+        return allocation
+
+# -------------------------------
 # Allocation Validation Function
 # -------------------------------
 
@@ -224,7 +328,11 @@ User Input:
 Previous Allocation:
 {json.dumps(previous_allocation, ensure_ascii=False, indent=2) if previous_allocation else "NONE"}
 
-IMPORTANT: Generate the description field {language_instruction} as per user's preferred language.
+IMPORTANT REQUIREMENTS:
+1. Generate the description field {language_instruction} as per user's preferred language
+2. MUST include investment_amount, investment_type in your output JSON (from user_profile)
+3. If investment_type is "SIP", MUST include sip_frequency in your output JSON
+4. Follow FINAL OUTPUT FORMAT exactly
 
 Produce FINAL allocation JSON only.
 """
@@ -340,6 +448,9 @@ CREATE A NEW ALLOCATION that fixes the violations above. Produce FINAL allocatio
                 logger.info(f"Precious Metals Check: Gold={has_gold}, Silver={has_silver}")
                 logger.info("-" * 80)
 
+                # Calculate investment returns
+                allocation = calculate_investment_returns(allocation)
+
                 logger.info("ALLOCATION GENERATION COMPLETED SUCCESSFULLY")
                 logger.info("=" * 80)
                 return allocation
@@ -370,6 +481,9 @@ CREATE A NEW ALLOCATION that fixes the violations above. Produce FINAL allocatio
                     has_gold = any('GOLD' in cat for cat in fund_categories)
                     has_silver = any('SILVER' in cat for cat in fund_categories)
                     logger.info(f"Precious Metals Check: Gold={has_gold}, Silver={has_silver}")
+
+                    # Calculate investment returns even on validation failure
+                    last_allocation = calculate_investment_returns(last_allocation)
 
                     return last_allocation
 
@@ -736,10 +850,10 @@ Latest User Input: "{user_text}"
 IMPORTANT: User's preferred language is {preferred_language}. Generate all bot messages {language_instruction}.
 
 Follow CONVERSATIONAL FLOW MANAGEMENT rules:
-1. Extract all available information from user input
-2. Check what's still missing (goal, time_horizon)
-3. If time_horizon is missing, ask for it
-4. If everything is available, generate allocation
+1. Extract all available information from user input (goal, time_horizon, investment_amount, investment_type, sip_frequency)
+2. Check what's still missing - CRITICAL fields are: time_horizon, investment_amount, investment_type
+3. Ask for missing CRITICAL fields in priority order
+4. Only proceed to allocation when ALL CRITICAL fields are collected
 5. Return appropriate JSON based on stage
 
 Return ONLY valid JSON in one of these formats:
@@ -748,22 +862,28 @@ If need to ask question:
 {{
   "stage": "questioning",
   "bot_message": "..." ({language_instruction}),
-  "question_type": "time_horizon" | "goal" | "preferences",
+  "question_type": "time_horizon" | "investment_amount" | "investment_type" | "goal" | "preferences",
   "needs_response": true,
   "collected_info": {{
     "goal": "..." or null,
     "time_horizon": "..." or null,
+    "investment_amount": number or null,
+    "investment_type": "..." or null,
+    "sip_frequency": "..." or null,
     "preferences": {{...}}
   }}
 }}
 
-If ready to allocate:
+If ready to allocate (ONLY when goal, time_horizon, investment_amount, investment_type are ALL collected):
 {{
   "stage": "ready_to_allocate",
   "proceed_to_allocation": true,
   "collected_info": {{
     "goal": "...",
     "time_horizon": "...",
+    "investment_amount": number,
+    "investment_type": "SIP" | "Lumpsum",
+    "sip_frequency": "monthly" | "daily" | "weekly" (if SIP),
     "preferences": {{...}}
   }}
 }}
@@ -784,8 +904,21 @@ If ready to allocate:
             logger.info("Proceeding to allocation generation")
             collected_info = result.get('collected_info', {})
             time_horizon = collected_info.get('time_horizon', '4+ years')
+            investment_amount = collected_info.get('investment_amount')
+            investment_type = collected_info.get('investment_type')
+            sip_frequency = collected_info.get('sip_frequency', 'monthly')
 
             logger.info(f"Extracted time horizon: {time_horizon}")
+            logger.info(f"Extracted investment amount: ₹{investment_amount}")
+            logger.info(f"Extracted investment type: {investment_type}")
+            if investment_type == "SIP":
+                logger.info(f"Extracted SIP frequency: {sip_frequency}")
+
+            # Add investment details to user_profile for allocation generation
+            user_profile['investment_amount'] = investment_amount
+            user_profile['investment_type'] = investment_type
+            if investment_type == "SIP":
+                user_profile['sip_frequency'] = sip_frequency
 
             # Generate allocation
             allocation = get_allocation(
