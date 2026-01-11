@@ -199,6 +199,11 @@ def get_allocation(user_text, user_profile, time_horizon, previous_allocation=No
     last_allocation = None
     last_violations = []
 
+    # Get preferred language
+    preferred_language = user_profile.get('preferred_language', 'english')
+    language_instruction = "in English" if preferred_language == 'english' else "in Hindi (Devanagari script)"
+    logger.info(f"Allocation will be generated with description {language_instruction}")
+
     for attempt in range(1, MAX_ATTEMPTS + 1):
         logger.info("=" * 80)
         logger.info(f"ATTEMPT {attempt}/{MAX_ATTEMPTS}")
@@ -218,6 +223,8 @@ User Input:
 
 Previous Allocation:
 {json.dumps(previous_allocation, ensure_ascii=False, indent=2) if previous_allocation else "NONE"}
+
+IMPORTANT: Generate the description field {language_instruction} as per user's preferred language.
 
 Produce FINAL allocation JSON only.
 """
@@ -591,13 +598,18 @@ def start_conversation():
             return jsonify({'success': False, 'error': 'User profile required'}), 400
 
         risk_profile = user_profile.get('risk_profile', 'Medium Risk')
+        preferred_language = user_profile.get('preferred_language', 'english')
 
         logger.info("="*80)
         logger.info("CONVERSATION STARTED")
         logger.info(f"Risk Profile: {risk_profile}")
+        logger.info(f"Preferred Language: {preferred_language}")
 
         # Load context
         context = load_context()
+
+        # Determine language instruction
+        language_instruction = "in English" if preferred_language == 'english' else "in Hindi (Devanagari script)"
 
         # Generate greeting using GPT-4
         prompt = f"""
@@ -606,14 +618,15 @@ def start_conversation():
 User has completed risk profiling:
 Risk Profile: {risk_profile}
 Risk Score: {user_profile.get('risk_score', 50)}
+Preferred Language: {preferred_language}
 
 Generate a warm, conversational greeting as per STAGE 1: PERSONALIZED GREETING rules.
+IMPORTANT: Generate the message {language_instruction}.
 
 Return ONLY valid JSON:
 {{
   "stage": "greeting",
-  "bot_message": "...",
-  "bot_message_hindi": "..." (if user might speak Hindi, provide Hindi version too),
+  "bot_message": "..." ({language_instruction}),
   "needs_response": true
 }}
 """
@@ -629,15 +642,14 @@ Return ONLY valid JSON:
 
         logger.info(f"Greeting Generated: {bot_message}")
 
-        # Generate TTS audio
-        detected_language = 'english'  # Default for greeting
+        # Generate TTS audio using preferred language
         voice = "nova"  # Female voice
 
         tts_response = openai.audio.speech.create(
             model="tts-1",
             voice=voice,
             input=bot_message,
-            speed=0.95
+            speed=0.9  # Slightly slower for clearer pronunciation
         )
 
         audio_bytes = tts_response.content
@@ -705,6 +717,11 @@ Return the FULL allocation JSON as per FINAL OUTPUT FORMAT.
 """
         else:
             logger.info("Processing conversation turn for new allocation")
+
+            # Get preferred language
+            preferred_language = user_profile.get('preferred_language', 'english')
+            language_instruction = "in English" if preferred_language == 'english' else "in Hindi (Devanagari script)"
+
             prompt = f"""
 {context}
 
@@ -715,6 +732,8 @@ Conversation History:
 {conversation_context}
 
 Latest User Input: "{user_text}"
+
+IMPORTANT: User's preferred language is {preferred_language}. Generate all bot messages {language_instruction}.
 
 Follow CONVERSATIONAL FLOW MANAGEMENT rules:
 1. Extract all available information from user input
@@ -728,7 +747,7 @@ Return ONLY valid JSON in one of these formats:
 If need to ask question:
 {{
   "stage": "questioning",
-  "bot_message": "...",
+  "bot_message": "..." ({language_instruction}),
   "question_type": "time_horizon" | "goal" | "preferences",
   "needs_response": true,
   "collected_info": {{
@@ -796,16 +815,15 @@ If ready to allocate:
             bot_message = result['bot_message']
             logger.info(f"Bot Question: {bot_message}")
 
-            # Detect language
-            detected_language = detect_language(user_text)
-            voice = "nova"
+            # Use preferred language from user profile
+            voice = "nova"  # Female voice
 
             # Generate TTS
             tts_response = openai.audio.speech.create(
                 model="tts-1",
                 voice=voice,
                 input=bot_message,
-                speed=0.95
+                speed=0.9  # Slightly slower for clearer pronunciation
             )
 
             audio_bytes = tts_response.content

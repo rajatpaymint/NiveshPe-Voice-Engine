@@ -437,6 +437,14 @@
                 <label for="age">Age</label>
                 <input type="number" id="age" placeholder="e.g., 30" min="18" max="100" required>
             </div>
+            <div class="form-group">
+                <label for="preferredLanguage">Preferred Language</label>
+                <select id="preferredLanguage" required>
+                    <option value="">Select Language</option>
+                    <option value="english">English</option>
+                    <option value="hindi">Hindi (हिंदी)</option>
+                </select>
+            </div>
             <button onclick="calculateRisk()">Calculate Risk Profile</button>
         </div>
 
@@ -530,6 +538,7 @@
         let conversationStage = 'not_started';
         let waitingForUser = false;
         let botAudioPlayer = null;
+        let userPreferredLanguage = 'english'; // Default language
 
         function showStep(stepNumber) {
             document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
@@ -552,11 +561,15 @@
             const occupation = document.getElementById('occupation').value;
             const dependents = document.getElementById('dependents').value;
             const age = document.getElementById('age').value;
+            const preferredLanguage = document.getElementById('preferredLanguage').value;
 
-            if (!salary || !occupation || !dependents || !age) {
+            if (!salary || !occupation || !dependents || !age || !preferredLanguage) {
                 showError('Please fill in all fields');
                 return;
             }
+
+            // Store language preference
+            userPreferredLanguage = preferredLanguage;
 
             showLoading(true);
 
@@ -571,6 +584,9 @@
 
                 if (data.success) {
                     userProfile = data.user_profile;
+                    // Add language preference to user profile
+                    userProfile.preferred_language = userPreferredLanguage;
+
                     document.getElementById('riskProfile').innerHTML = `
                         <h2>${data.risk_profile}</h2>
                         <p style="font-size: 24px; font-weight: bold;">Risk Score: ${data.risk_score}/100</p>
@@ -946,7 +962,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: text,
-                        language: detectedLanguage
+                        language: userPreferredLanguage
                     })
                 });
 
@@ -1040,8 +1056,10 @@
             // Go back to conversation mode
             showStep(2);
 
-            // Bot asks what to change
-            const botMessage = "What would you like to change in your allocation? You can ask for more growth, more safety, adjust gold, or change fund types.";
+            // Bot asks what to change (in preferred language)
+            const botMessage = userPreferredLanguage === 'hindi'
+                ? "आप अपने निवेश में क्या बदलाव चाहते हैं? आप अधिक वृद्धि, अधिक सुरक्षा, गोल्ड में समायोजन, या फंड के प्रकार बदलने के लिए कह सकते हैं।"
+                : "What would you like to change in your allocation? You can ask for more growth, more safety, adjust gold, or change fund types.";
 
             // Create TTS for modification question
             try {
@@ -1050,7 +1068,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: botMessage,
-                        language: detectedLanguage
+                        language: userPreferredLanguage
                     })
                 });
 
