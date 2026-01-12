@@ -272,9 +272,14 @@ You MUST calculate and display the blended historical return:
 Blended 3Y CAGR =
 Sum of (Fund Allocation % × Fund 3Y CAGR)
 
+IMPORTANT: Use actual CAGR values for all funds (including Gold/Silver actual high returns)
+- The backend will automatically cap Gold/Silver at 24% for return projections
+- But in your blended_3y_cagr field, use the ACTUAL uncapped values
+- Show actual Gold CAGR: 33.7% and Silver CAGR: 50.95% in allocations
+
 This value is:
 
-- Historical
+- Historical (based on actual past performance)
 - Informational only
 - Not a projection or promise
 
@@ -354,13 +359,19 @@ For investment horizons greater than 2 years:
 
 MANDATORY REQUIREMENTS:
 - Include EXACTLY 10% allocation to Gold OR Silver (not ~10%, not 9%, not 11%)
-- Gold is the default choice
-- Silver may be used for 4+ years horizon or if user prefers
+- **ALWAYS prefer Gold as the default choice**
+- **Only allocate Silver if user EXPLICITLY requests Silver**
+- Do NOT allocate Silver just because the horizon is 4+ years
+
+IMPORTANT NOTE ON CAGR:
+- Gold actual 3Y CAGR: 33.7% (show this in allocation)
+- Silver actual 3Y CAGR: 50.95% (show this in allocation)
+- **For blended CAGR calculations, cap Gold and Silver at 24%** (backend will handle this)
+- Rationale: Gold/Silver have had exceptional returns that may not continue
 
 Exceptions (ONLY when ALL conditions are met):
 - User EXPLICITLY says "no gold" or "no precious metals" in their input
 - OR user asks for "pure equity" or "100% equity" or "maximum equity only"
-- OR user does not mention diversification
 
 If user is silent about precious metals:
 - Default to 10% Gold allocation (MANDATORY for > 2 years)

@@ -97,6 +97,32 @@ def calculate_risk_score(salary, occupation, dependents, age):
 # Investment Calculations Function
 # -------------------------------
 
+def cap_precious_metal_cagr(cagr, fund_category):
+    """
+    Caps Gold and Silver CAGR at 24% for calculation purposes.
+    If actual is below 24%, use actual.
+    """
+    if fund_category.upper() in ['GOLD', 'SILVER']:
+        return min(cagr, 24.0)
+    return cagr
+
+def calculate_blended_cagr_with_cap(allocation):
+    """
+    Calculates blended CAGR with Gold/Silver capped at 24%.
+    Returns the capped blended CAGR for use in return calculations.
+    """
+    total_cagr = 0
+    for fund in allocation.get('allocation', []):
+        percentage = fund.get('percentage', 0)
+        cagr = fund.get('cagr_3y', 0)
+        fund_category = fund.get('fund_category', '')
+
+        # Cap Gold/Silver CAGR at 24%
+        capped_cagr = cap_precious_metal_cagr(cagr, fund_category)
+        total_cagr += (percentage * capped_cagr) / 100
+
+    return round(total_cagr, 2)
+
 def calculate_investment_returns(allocation):
     """
     Calculates investment projections (total invested, expected corpus, expected gains)
@@ -110,7 +136,10 @@ def calculate_investment_returns(allocation):
         investment_type = allocation.get('investment_type')
         sip_frequency = allocation.get('sip_frequency', 'monthly')
         time_horizon_months = allocation.get('time_horizon_months', 12)
-        blended_cagr = allocation.get('blended_3y_cagr', 12)
+
+        # Use blended CAGR with Gold/Silver capped at 24% for calculations
+        blended_cagr = calculate_blended_cagr_with_cap(allocation)
+        actual_blended_cagr = allocation.get('blended_3y_cagr', 12)
 
         # Check if required fields are present
         if investment_amount is None or investment_type is None:
@@ -124,7 +153,8 @@ def calculate_investment_returns(allocation):
         logger.info(f"Investment Type: {investment_type}")
         logger.info(f"SIP Frequency: {sip_frequency if investment_type == 'SIP' else 'N/A'}")
         logger.info(f"Time Horizon: {time_horizon_months} months")
-        logger.info(f"Blended CAGR: {blended_cagr}%")
+        logger.info(f"Actual Blended CAGR: {actual_blended_cagr}% (for display)")
+        logger.info(f"Capped Blended CAGR: {blended_cagr}% (for calculations - Gold/Silver capped at 24%)")
 
         # Calculate investment period in years
         investment_period_years = time_horizon_months / 12
