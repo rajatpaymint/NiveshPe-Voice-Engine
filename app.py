@@ -778,8 +778,8 @@ def api_text_to_speech():
         # Choose voice based on language
         # Eleven Labs voice IDs - using multilingual voices for better quality
         if language == 'hindi':
-            # Using a multilingual voice that supports Hindi well
-            voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual, clear voice
+            # Using user's selected Hindi voice
+            voice_id = "mfMM3ijQgz8QtMeKifko"  # Custom Hindi voice
         else:
             # English voice - professional and clear
             voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English female voice
@@ -903,7 +903,7 @@ Return ONLY valid JSON:
 
         # Generate TTS audio using Eleven Labs with preferred language
         if preferred_language == 'hindi':
-            voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual
+            voice_id = "mfMM3ijQgz8QtMeKifko"  # Custom Hindi voice
         else:
             voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English
 
@@ -1112,7 +1112,7 @@ If ready to allocate (ONLY when goal, time_horizon, investment_amount, investmen
             preferred_language = user_profile.get('preferred_language', 'english')
 
             if preferred_language == 'hindi':
-                voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual
+                voice_id = "mfMM3ijQgz8QtMeKifko"  # Custom Hindi voice
             else:
                 voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English
 
