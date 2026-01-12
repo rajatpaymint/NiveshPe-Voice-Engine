@@ -264,24 +264,20 @@ If the user explicitly mentions a desired return (e.g. “15% CAGR”):
 - Never promise or imply future returns
 
 ================================================
-STEP 9: BLENDED PORTFOLIO RETURN (MANDATORY)
+STEP 9: BLENDED PORTFOLIO RETURN (CALCULATED BY BACKEND)
 ================================================
 
-You MUST calculate and display the blended historical return:
+IMPORTANT: You do NOT need to calculate blended_3y_cagr.
+The backend will automatically calculate it with Gold/Silver capped at 24%.
 
-Blended 3Y CAGR =
-Sum of (Fund Allocation % × Fund 3Y CAGR)
+Your responsibility:
+- Provide the allocation array with ACTUAL CAGR values for each fund
+- "cagr_3y": 33.7 for Gold
+- "cagr_3y": 50.95 for Silver
+- Backend will cap these at 24% when calculating the blended return
 
-IMPORTANT: Use actual CAGR values for all funds (including Gold/Silver actual high returns)
-- The backend will automatically cap Gold/Silver at 24% for return projections
-- But in your blended_3y_cagr field, use the ACTUAL uncapped values
-- Show actual Gold CAGR: 33.7% and Silver CAGR: 50.95% in allocations
-
-This value is:
-
-- Historical (based on actual past performance)
-- Informational only
-- Not a projection or promise
+DO NOT include "blended_3y_cagr" field in your output.
+Backend will add it after calculation.
 
 ================================================
 STEP 10: INVESTMENT AMOUNT & TYPE (MANDATORY)
@@ -406,7 +402,6 @@ FINAL OUTPUT FORMAT (STRICT JSON)
 "investment_amount": number (MANDATORY),
 "investment_type": "SIP" | "Lumpsum" (MANDATORY),
 "sip_frequency": "monthly" | "daily" | "weekly" (only if SIP, otherwise null),
-"blended_3y_cagr": number,
 "description": "... (max 100 words, conversational tone for voice output - see DESCRIPTION RULES below)",
 "allocation": [
 {
@@ -414,7 +409,7 @@ FINAL OUTPUT FORMAT (STRICT JSON)
 "fund_name": "...",
 "isin": "...",
 "percentage": number,
-"cagr_3y": number
+"cagr_3y": number (use ACTUAL values including Gold 33.7%, Silver 50.95%)
 }
 ]
 }
@@ -423,7 +418,9 @@ CRITICAL NOTES:
 - investment_amount MUST be a number (NEVER generate allocation without this)
 - investment_type MUST be either "SIP" or "Lumpsum" (NEVER generate allocation without this)
 - sip_frequency is required only if investment_type is "SIP" (default to "monthly" if not specified)
-- Investment return calculations will be computed by backend - DO NOT include investment_calculations in your output
+- DO NOT include "blended_3y_cagr" - backend will calculate it
+- DO NOT include "investment_calculations" - backend will calculate it
+- Use ACTUAL CAGR values in allocation array (backend will cap Gold/Silver when calculating blended return)
 
 ================================================
 LANGUAGE & COMPLIANCE RULES

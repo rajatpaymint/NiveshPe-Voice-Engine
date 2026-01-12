@@ -106,10 +106,13 @@ def cap_precious_metal_cagr(cagr, fund_category):
         return min(cagr, 24.0)
     return cagr
 
-def calculate_blended_cagr_with_cap(allocation):
+def calculate_blended_cagr(allocation):
     """
     Calculates blended CAGR with Gold/Silver capped at 24%.
-    Returns the capped blended CAGR for use in return calculations.
+    This is the ONLY place where blended CAGR should be calculated.
+    GPT-4 should NOT calculate this.
+
+    Returns the capped blended CAGR for use in return calculations and display.
     """
     total_cagr = 0
     for fund in allocation.get('allocation', []):
@@ -128,18 +131,20 @@ def calculate_investment_returns(allocation):
     Calculates investment projections (total invested, expected corpus, expected gains)
     based on allocation details.
 
-    Returns: Updated allocation with investment_calculations added
+    Returns: Updated allocation with investment_calculations and blended_3y_cagr added
     """
     try:
+        # Calculate blended CAGR in backend (with Gold/Silver capped at 24%)
+        blended_cagr = calculate_blended_cagr(allocation)
+
+        # Add blended CAGR to allocation
+        allocation['blended_3y_cagr'] = blended_cagr
+
         # Extract required fields
         investment_amount = allocation.get('investment_amount')
         investment_type = allocation.get('investment_type')
         sip_frequency = allocation.get('sip_frequency', 'monthly')
         time_horizon_months = allocation.get('time_horizon_months', 12)
-
-        # Use blended CAGR with Gold/Silver capped at 24% for calculations
-        blended_cagr = calculate_blended_cagr_with_cap(allocation)
-        actual_blended_cagr = allocation.get('blended_3y_cagr', 12)
 
         # Check if required fields are present
         if investment_amount is None or investment_type is None:
@@ -149,12 +154,11 @@ def calculate_investment_returns(allocation):
         logger.info("-" * 80)
         logger.info("INVESTMENT CALCULATIONS")
         logger.info("-" * 80)
+        logger.info(f"Blended 3Y CAGR: {blended_cagr}% (calculated by backend, Gold/Silver capped at 24%)")
         logger.info(f"Investment Amount: ₹{investment_amount:,.2f}")
         logger.info(f"Investment Type: {investment_type}")
         logger.info(f"SIP Frequency: {sip_frequency if investment_type == 'SIP' else 'N/A'}")
         logger.info(f"Time Horizon: {time_horizon_months} months")
-        logger.info(f"Actual Blended CAGR: {actual_blended_cagr}% (for display)")
-        logger.info(f"Capped Blended CAGR: {blended_cagr}% (for calculations - Gold/Silver capped at 24%)")
 
         # Calculate investment period in years
         investment_period_years = time_horizon_months / 12
@@ -436,8 +440,8 @@ CREATE A NEW ALLOCATION that fixes the violations above. Produce FINAL allocatio
             logger.info(f"Risk Score: {allocation.get('risk_score', 'N/A')}")
             logger.info(f"Goal: {allocation.get('goal', 'N/A')}")
             logger.info(f"Time Horizon (months): {allocation.get('time_horizon_months', 'N/A')}")
-            logger.info(f"Blended 3Y CAGR: {allocation.get('blended_3y_cagr', 'N/A')}%")
             logger.info(f"Number of Funds: {len(allocation.get('allocation', []))}")
+            logger.info("Note: Blended CAGR will be calculated by backend")
 
             # Log each fund
             logger.info("-" * 80)
