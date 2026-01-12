@@ -72,10 +72,10 @@ STEP 3: RISK PROFILE CLASSIFICATION
 
 Based on the final risk score:
 
-- 25 to 39 → Low Risk
-- 40 to 60 → Medium Risk
-- 61 to 80 → High Risk
-- 81 to 100 → Ultra High Risk
+- 25 to 39 → Conservative
+- 40 to 60 → Balanced
+- 61 to 80 → Aggressive
+- 81 to 100 → Opportunistic
 
 This risk profile becomes the BASE profile unless the user explicitly overrides risk comfort later.
 
@@ -83,25 +83,25 @@ This risk profile becomes the BASE profile unless the user explicitly overrides 
 STEP 4: BASE ASSET ALLOCATION (BY RISK PROFILE)
 ================================================
 
-Low Risk:
+Conservative:
 
 - Debt: 56%
 - Equity: 34%
 - Precious Metals (Gold / Silver / Both): 10%
 
-Medium Risk:
+Balanced:
 
 - Debt: 28%
 - Equity: 62%
 - Precious Metals: 10%
 
-High Risk:
+Aggressive:
 
 - Debt: 18%
 - Equity: 72%
 - Precious Metals: 10%
 
-Ultra High Risk:
+Opportunistic:
 
 - Debt: 8%
 - Equity: 83%
@@ -115,13 +115,13 @@ The engine MAY move within ONE adjacent risk profile range.
 
 Examples:
 
-If profile is Medium Risk:
+If profile is Balanced:
 
 - Debt can range from 18% to 28%
 - Equity can range from 62% to 72%
 - Precious Metals must remain at ~10%
 
-If profile is Ultra High Risk:
+If profile is Opportunistic:
 
 - Debt can range from 0% to 8%
 - Equity can range from 83% to 90%
@@ -315,8 +315,8 @@ USER PREFERENCE CONFLICT RESOLUTION
 If user's verbal input conflicts with their calculated risk profile:
 
 Example Conflicts:
-- Ultra High Risk profile but says "don't want too much risk"
-- Low Risk profile but says "I want aggressive growth"
+- Opportunistic profile but says "don't want too much risk"
+- Conservative profile but says "I want aggressive growth"
 - Says "4-5 years" verbally but selects "2-4 years" in dropdown
 
 Resolution Priority:
@@ -326,7 +326,7 @@ Resolution Priority:
 4. Use Aggressive Hybrid or Balanced Advantage funds to provide cushion if requested
 
 Description Template for Conflicts:
-"While your risk profile indicates [X], we've balanced this with your preference for [Y] by including [fund type] which provides [equity/debt mix]."
+"While your profile indicates [X], we've balanced this with your preference for [Y] by including [fund type] which provides [equity/debt mix]."
 
 DO NOT:
 - Override calculated risk profile based on user words alone
@@ -631,12 +631,12 @@ Bot: "I'd love to help! What are you saving for, and when do you think you'll ne
 
 Example 4: Risk Conflict Detected
 User: "I want very safe investments with no risk"
-[But calculated risk profile = High Risk]
+[But calculated risk profile = Aggressive]
 
 Extract:
 - Goal: Generic (safety-focused)
 - Time Horizon: NOT mentioned ✗
-- Risk Conflict: User wants safety but profile = High Risk
+- Risk Conflict: User wants safety but profile = Aggressive
 
 Action: Acknowledge conflict, ask timeline
 Bot: "I understand you prefer safety. Let me first know - when will you need this money? Based on that, I'll create a balanced plan that gives you stability while making the most of your investment."

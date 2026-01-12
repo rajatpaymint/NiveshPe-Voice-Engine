@@ -8,6 +8,8 @@ import tempfile
 import base64
 import logging
 from datetime import datetime
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,6 +29,8 @@ app = Flask(__name__, static_folder='static')
 CORS(app)
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+
 logger.info("="*80)
 logger.info("NiveshPe Voice Investment Engine Started")
 logger.info("="*80)
@@ -73,13 +77,13 @@ def calculate_risk_score(salary, occupation, dependents, age):
     risk_score = int((raw_score / 16) * 100)
 
     if risk_score <= 39:
-        profile = "Low Risk"
+        profile = "Conservative"
     elif risk_score <= 60:
-        profile = "Medium Risk"
+        profile = "Balanced"
     elif risk_score <= 80:
-        profile = "High Risk"
+        profile = "Aggressive"
     else:
-        profile = "Ultra High Risk"
+        profile = "Opportunistic"
 
     logger.info(f"Points Breakdown: Salary={salary_points}, Occupation={occupation_points}, Dependents={dependent_points}, Age={age_points}")
     logger.info(f"Raw Score: {raw_score}/16 → Risk Score: {risk_score}/100")
@@ -238,10 +242,10 @@ def validate_allocation(allocation, time_horizon):
     # Define expected bounds based on risk profile
     risk_profile = allocation.get('risk_profile', '')
     bounds = {
-        "Low Risk": {"equity_min": 34, "equity_max": 62, "debt_min": 28, "debt_max": 56},
-        "Medium Risk": {"equity_min": 62, "equity_max": 72, "debt_min": 18, "debt_max": 28},
-        "High Risk": {"equity_min": 72, "equity_max": 83, "debt_min": 8, "debt_max": 18},
-        "Ultra High Risk": {"equity_min": 83, "equity_max": 90, "debt_min": 0, "debt_max": 8}
+        "Conservative": {"equity_min": 34, "equity_max": 62, "debt_min": 28, "debt_max": 56},
+        "Balanced": {"equity_min": 62, "equity_max": 72, "debt_min": 18, "debt_max": 28},
+        "Aggressive": {"equity_min": 72, "equity_max": 83, "debt_min": 8, "debt_max": 18},
+        "Opportunistic": {"equity_min": 83, "equity_max": 90, "debt_min": 0, "debt_max": 8}
     }
 
     expected = bounds.get(risk_profile, {"equity_min": 0, "equity_max": 100, "debt_min": 0, "debt_max": 100})
@@ -633,7 +637,7 @@ def api_allocate():
 def api_text_to_speech():
     try:
         logger.info("=" * 80)
-        logger.info("TEXT-TO-SPEECH REQUEST RECEIVED")
+        logger.info("TEXT-TO-SPEECH REQUEST RECEIVED (ELEVEN LABS)")
         logger.info("=" * 80)
 
         data = request.json
@@ -644,20 +648,33 @@ def api_text_to_speech():
         logger.info(f"Language: {language}")
 
         # Choose voice based on language
-        # For OpenAI TTS, we'll use 'nova' for female voice
-        # Note: OpenAI TTS doesn't have native Hindi support, but can pronounce Hindi text
-        voice = "nova"  # Female voice
+        # Eleven Labs voice IDs - using multilingual voices for better quality
+        if language == 'hindi':
+            # Using a multilingual voice that supports Hindi well
+            voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual, clear voice
+        else:
+            # English voice - professional and clear
+            voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English female voice
 
-        # Generate speech
-        response = openai.audio.speech.create(
-            model="tts-1",  # or "tts-1-hd" for higher quality
-            voice=voice,
-            input=text,
-            speed=0.95  # Slightly slower for clarity
+        logger.info(f"Using Eleven Labs voice ID: {voice_id}")
+
+        # Generate speech using Eleven Labs
+        response = elevenlabs_client.text_to_speech.convert(
+            voice_id=voice_id,
+            optimize_streaming_latency="0",
+            output_format="mp3_22050_32",
+            text=text,
+            model_id="eleven_multilingual_v2",  # Supports both English and Hindi
+            voice_settings=VoiceSettings(
+                stability=0.5,
+                similarity_boost=0.75,
+                style=0.0,
+                use_speaker_boost=True,
+            ),
         )
 
-        # Convert to base64 for transmission
-        audio_bytes = response.content
+        # Collect audio bytes
+        audio_bytes = b"".join(response)
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
 
         logger.info(f"Audio generated: {len(audio_bytes)} bytes")
@@ -711,7 +728,7 @@ def start_conversation():
         if not user_profile:
             return jsonify({'success': False, 'error': 'User profile required'}), 400
 
-        risk_profile = user_profile.get('risk_profile', 'Medium Risk')
+        risk_profile = user_profile.get('risk_profile', 'Balanced')
         preferred_language = user_profile.get('preferred_language', 'english')
 
         logger.info("="*80)
@@ -756,17 +773,29 @@ Return ONLY valid JSON:
 
         logger.info(f"Greeting Generated: {bot_message}")
 
-        # Generate TTS audio using preferred language
-        voice = "nova"  # Female voice
+        # Generate TTS audio using Eleven Labs with preferred language
+        if preferred_language == 'hindi':
+            voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual
+        else:
+            voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English
 
-        tts_response = openai.audio.speech.create(
-            model="tts-1",
-            voice=voice,
-            input=bot_message,
-            speed=0.9  # Slightly slower for clearer pronunciation
+        logger.info(f"Using Eleven Labs voice ID: {voice_id}")
+
+        tts_response = elevenlabs_client.text_to_speech.convert(
+            voice_id=voice_id,
+            optimize_streaming_latency="0",
+            output_format="mp3_22050_32",
+            text=bot_message,
+            model_id="eleven_multilingual_v2",
+            voice_settings=VoiceSettings(
+                stability=0.5,
+                similarity_boost=0.75,
+                style=0.0,
+                use_speaker_boost=True,
+            ),
         )
 
-        audio_bytes = tts_response.content
+        audio_bytes = b"".join(tts_response)
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
 
         result['audio'] = f"data:audio/mp3;base64,{audio_base64}"
@@ -949,17 +978,31 @@ If ready to allocate (ONLY when goal, time_horizon, investment_amount, investmen
             logger.info(f"Bot Question: {bot_message}")
 
             # Use preferred language from user profile
-            voice = "nova"  # Female voice
+            preferred_language = user_profile.get('preferred_language', 'english')
 
-            # Generate TTS
-            tts_response = openai.audio.speech.create(
-                model="tts-1",
-                voice=voice,
-                input=bot_message,
-                speed=0.9  # Slightly slower for clearer pronunciation
+            if preferred_language == 'hindi':
+                voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily - Multilingual
+            else:
+                voice_id = "EXAVITQu4vr4xnSDxMaL"  # Bella - English
+
+            logger.info(f"Using Eleven Labs voice ID: {voice_id}")
+
+            # Generate TTS using Eleven Labs
+            tts_response = elevenlabs_client.text_to_speech.convert(
+                voice_id=voice_id,
+                optimize_streaming_latency="0",
+                output_format="mp3_22050_32",
+                text=bot_message,
+                model_id="eleven_multilingual_v2",
+                voice_settings=VoiceSettings(
+                    stability=0.5,
+                    similarity_boost=0.75,
+                    style=0.0,
+                    use_speaker_boost=True,
+                ),
             )
 
-            audio_bytes = tts_response.content
+            audio_bytes = b"".join(tts_response)
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
 
             result['audio'] = f"data:audio/mp3;base64,{audio_base64}"
