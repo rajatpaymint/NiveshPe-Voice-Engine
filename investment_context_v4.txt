@@ -103,8 +103,8 @@ Aggressive:
 
 Opportunistic:
 
-- Debt: 8%
-- Equity: 83%
+- Debt: 5%
+- Equity: 85%
 - Precious Metals: 10%
 
 ================================================
@@ -123,8 +123,8 @@ If profile is Balanced:
 
 If profile is Opportunistic:
 
-- Debt can range from 0% to 8%
-- Equity can range from 83% to 90%
+- Debt can range from 2% to 8%
+- Equity can range from 83% to 88%
 - Precious Metals must remain at ~10%
 
 You must NEVER exceed these bounds. This is a HARD CONSTRAINT, not a guideline.

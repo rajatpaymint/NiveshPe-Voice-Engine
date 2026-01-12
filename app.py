@@ -245,7 +245,7 @@ def validate_allocation(allocation, time_horizon):
         "Conservative": {"equity_min": 34, "equity_max": 62, "debt_min": 28, "debt_max": 56},
         "Balanced": {"equity_min": 62, "equity_max": 72, "debt_min": 18, "debt_max": 28},
         "Aggressive": {"equity_min": 72, "equity_max": 83, "debt_min": 8, "debt_max": 18},
-        "Opportunistic": {"equity_min": 83, "equity_max": 90, "debt_min": 0, "debt_max": 8}
+        "Opportunistic": {"equity_min": 83, "equity_max": 88, "debt_min": 2, "debt_max": 8}
     }
 
     expected = bounds.get(risk_profile, {"equity_min": 0, "equity_max": 100, "debt_min": 0, "debt_max": 100})
@@ -574,7 +574,8 @@ def api_transcribe():
             res = openai.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio,
-                prompt="Transcribe only in Hindi (Devanagari) or English."
+                language="hi",  # Prefer Hindi
+                prompt="Transcribe in Hindi (Devanagari script) or English. Use Devanagari for Hindi, not Urdu or Arabic script."
             )
 
         transcribed_text = res.text.strip()
