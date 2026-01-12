@@ -126,12 +126,90 @@ def calculate_blended_cagr(allocation):
 
     return round(total_cagr, 2)
 
+def generate_description_with_amounts(allocation, expected_corpus, expected_gains, language='english'):
+    """
+    Generates a conversational description mentioning investment amounts per fund
+    and expected returns.
+    """
+    try:
+        funds = allocation.get('allocation', [])
+        investment_type = allocation.get('investment_type', 'Lumpsum')
+        sip_frequency = allocation.get('sip_frequency', 'monthly')
+        investment_period_years = allocation.get('investment_calculations', {}).get('investment_period_years', 0)
+
+        # Format numbers for speech
+        def format_amount(amount):
+            if amount >= 10000000:  # 1 crore+
+                crores = amount / 10000000
+                if language == 'hindi':
+                    return f"{crores:.1f} करोड़ रुपये"
+                return f"{crores:.1f} crore rupees"
+            elif amount >= 100000:  # 1 lakh+
+                lakhs = amount / 100000
+                if language == 'hindi':
+                    return f"{lakhs:.1f} लाख रुपये"
+                return f"{lakhs:.1f} lakh rupees"
+            else:
+                if language == 'hindi':
+                    return f"{amount:,.0f} रुपये"
+                return f"{amount:,.0f} rupees"
+
+        # Build fund allocation text
+        fund_texts = []
+        for fund in funds:
+            fund_name = fund.get('fund_name', '')
+            fund_amount = fund.get('investment_amount', 0)
+            fund_texts.append(f"{format_amount(fund_amount)} in {fund_name}")
+
+        # Generate description
+        if language == 'hindi':
+            if len(funds) == 1:
+                allocation_text = fund_texts[0]
+            elif len(funds) == 2:
+                allocation_text = f"{fund_texts[0]} और {fund_texts[1]}"
+            else:
+                allocation_text = ", ".join(fund_texts[:-1]) + f", और {fund_texts[-1]}"
+
+            investment_mode = "मासिक SIP" if investment_type == "SIP" else "एकमुश्त निवेश"
+
+            description = (
+                f"आपके प्रोफाइल के अनुसार, हमने आपका {investment_mode} इस प्रकार बांटा है: "
+                f"{allocation_text}। "
+                f"अगले {investment_period_years:.0f} सालों में आपका अनुमानित कुल फंड "
+                f"{format_amount(expected_corpus)} होगा, "
+                f"जिसमें {format_amount(expected_gains)} का लाभ होगा।"
+            )
+        else:
+            if len(funds) == 1:
+                allocation_text = fund_texts[0]
+            elif len(funds) == 2:
+                allocation_text = f"{fund_texts[0]} and {fund_texts[1]}"
+            else:
+                allocation_text = ", ".join(fund_texts[:-1]) + f", and {fund_texts[-1]}"
+
+            investment_mode = "monthly SIP" if investment_type == "SIP" else "lumpsum investment"
+
+            description = (
+                f"Based on your profile, we've allocated your {investment_mode} as follows: "
+                f"{allocation_text}. "
+                f"Over the next {investment_period_years:.0f} years, your expected corpus will be "
+                f"{format_amount(expected_corpus)}, "
+                f"with gains of {format_amount(expected_gains)}."
+            )
+
+        return description
+
+    except Exception as e:
+        logger.error(f"Error generating description: {str(e)}")
+        return allocation.get('description', '')
+
 def calculate_investment_returns(allocation):
     """
     Calculates investment projections (total invested, expected corpus, expected gains)
     based on allocation details.
+    Also calculates per-fund investment amounts and updates description.
 
-    Returns: Updated allocation with investment_calculations and blended_3y_cagr added
+    Returns: Updated allocation with investment_calculations, blended_3y_cagr, and fund amounts added
     """
     try:
         # Calculate blended CAGR in backend (with Gold/Silver capped at 24%)
@@ -145,6 +223,7 @@ def calculate_investment_returns(allocation):
         investment_type = allocation.get('investment_type')
         sip_frequency = allocation.get('sip_frequency', 'monthly')
         time_horizon_months = allocation.get('time_horizon_months', 12)
+        preferred_language = allocation.get('preferred_language', 'english')
 
         # Check if required fields are present
         if investment_amount is None or investment_type is None:
@@ -162,6 +241,13 @@ def calculate_investment_returns(allocation):
 
         # Calculate investment period in years
         investment_period_years = time_horizon_months / 12
+
+        # Calculate per-fund investment amounts
+        for fund in allocation.get('allocation', []):
+            percentage = fund.get('percentage', 0)
+            fund_amount = (investment_amount * percentage) / 100
+            fund['investment_amount'] = round(fund_amount, 2)
+            logger.info(f"Fund {fund.get('fund_name')}: ₹{fund_amount:,.2f} ({percentage}%)")
 
         # Calculate total invested
         if investment_type == "Lumpsum":
@@ -224,6 +310,10 @@ def calculate_investment_returns(allocation):
         logger.info(f"Expected Gains: ₹{expected_gains:,.2f}")
         logger.info(f"Expected Return: {((expected_gains/total_invested)*100):.2f}%")
         logger.info("-" * 80)
+
+        # Generate enhanced description with amounts and returns
+        description = generate_description_with_amounts(allocation, expected_corpus, expected_gains, preferred_language)
+        allocation['description'] = description
 
         return allocation
 
@@ -432,6 +522,9 @@ CREATE A NEW ALLOCATION that fixes the violations above. Produce FINAL allocatio
 
             allocation = json.loads(allocation_json)
             last_allocation = allocation
+
+            # Add preferred_language to allocation for description generation
+            allocation['preferred_language'] = user_profile.get('preferred_language', 'english')
 
             # Log key details of the allocation
             logger.info("ALLOCATION ANALYSIS")
@@ -983,6 +1076,9 @@ If ready to allocate (ONLY when goal, time_horizon, investment_amount, investmen
             user_profile['investment_type'] = investment_type
             if investment_type == "SIP":
                 user_profile['sip_frequency'] = sip_frequency
+            # Ensure preferred_language is in user_profile
+            if 'preferred_language' not in user_profile:
+                user_profile['preferred_language'] = 'english'
 
             # Generate allocation
             allocation = get_allocation(

@@ -917,11 +917,15 @@
             html += '<div class="allocation-card"><h3 style="margin-bottom: 15px;">💼 Fund Allocation</h3>';
 
             allocation.allocation.forEach(fund => {
+                const fundAmount = fund.investment_amount || 0;
                 html += `
                     <div class="fund-item">
                         <div class="fund-header">
                             <div class="fund-name">${fund.fund_name}</div>
-                            <div class="fund-percentage">${fund.percentage}%</div>
+                            <div class="fund-percentage">
+                                <div style="font-size: 18px; font-weight: bold; color: #667eea;">₹${fundAmount.toLocaleString('en-IN')}</div>
+                                <div style="font-size: 12px; color: #999;">(${fund.percentage}%)</div>
+                            </div>
                         </div>
                         <div class="fund-details">
                             <span>${fund.fund_category}</span>
