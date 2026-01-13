@@ -137,22 +137,56 @@ def generate_description_with_amounts(allocation, expected_corpus, expected_gain
         sip_frequency = allocation.get('sip_frequency', 'monthly')
         investment_period_years = allocation.get('investment_calculations', {}).get('investment_period_years', 0)
 
-        # Format numbers for speech
+        # Format numbers for speech - always in English words
+        def number_to_words(num):
+            """Convert number to English words for amounts"""
+            if num == 0:
+                return "zero"
+
+            ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+            teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+                    "sixteen", "seventeen", "eighteen", "nineteen"]
+            tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+            if num < 10:
+                return ones[int(num)]
+            elif num < 20:
+                return teens[int(num - 10)]
+            elif num < 100:
+                return tens[int(num // 10)] + ("" if num % 10 == 0 else " " + ones[int(num % 10)])
+            elif num < 1000:
+                return ones[int(num // 100)] + " hundred" + ("" if num % 100 == 0 else " " + number_to_words(num % 100))
+            else:
+                return str(int(num))  # Fallback for very large numbers
+
         def format_amount(amount):
             if amount >= 10000000:  # 1 crore+
                 crores = amount / 10000000
-                if language == 'hindi':
-                    return f"{crores:.1f} करोड़ रुपये"
-                return f"{crores:.1f} crore rupees"
+                if crores == int(crores):
+                    crore_words = number_to_words(int(crores))
+                else:
+                    whole = int(crores)
+                    decimal = int((crores - whole) * 10)
+                    crore_words = f"{number_to_words(whole)} point {number_to_words(decimal)}" if decimal > 0 else number_to_words(whole)
+                return f"{crore_words} crore rupees"
             elif amount >= 100000:  # 1 lakh+
                 lakhs = amount / 100000
-                if language == 'hindi':
-                    return f"{lakhs:.1f} लाख रुपये"
-                return f"{lakhs:.1f} lakh rupees"
+                if lakhs == int(lakhs):
+                    lakh_words = number_to_words(int(lakhs))
+                else:
+                    whole = int(lakhs)
+                    decimal = int((lakhs - whole) * 10)
+                    lakh_words = f"{number_to_words(whole)} point {number_to_words(decimal)}" if decimal > 0 else number_to_words(whole)
+                return f"{lakh_words} lakh rupees"
+            elif amount >= 1000:  # Thousands
+                thousands = int(amount / 1000)
+                remainder = int(amount % 1000)
+                if remainder == 0:
+                    return f"{number_to_words(thousands)} thousand rupees"
+                else:
+                    return f"{number_to_words(thousands)} thousand {number_to_words(remainder)} rupees"
             else:
-                if language == 'hindi':
-                    return f"{amount:,.0f} रुपये"
-                return f"{amount:,.0f} rupees"
+                return f"{number_to_words(int(amount))} rupees"
 
         # Build fund allocation text
         fund_texts = []

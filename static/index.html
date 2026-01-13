@@ -707,7 +707,7 @@
         function detectSilence(analyser, stream, button, status) {
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
-            const SILENCE_THRESHOLD = 10; // Adjust this value to change sensitivity (lower = more sensitive)
+            const SILENCE_THRESHOLD = 25; // Adjust this value to change sensitivity (lower = more sensitive)
             const SILENCE_DURATION = 5000; // 5 seconds of silence
 
             function checkAudioLevel() {
